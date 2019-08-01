@@ -10,7 +10,9 @@ Scrape Facebook Public Posts without using Facebook API
 
 ## Install Requirements
 
-please make sure chrome is installed
+Please make sure chrome is installed and ```chromedriver``` is placed in the same directory as the file
+
+Find out which version of ```chromedriver``` you need to download in this link [Chrome Web Driver](http://chromedriver.chromium.org/downloads).
 ```sh
 pip install -r requirements.txt
 ```

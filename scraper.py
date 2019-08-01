@@ -4,7 +4,6 @@ import json
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup as bs
 
 
@@ -72,7 +71,7 @@ def extract(page, numOfPost, email, password, infinite_scroll=False):
         "profile.default_content_setting_values.notifications": 1
     })
 
-    browser = webdriver.Chrome(ChromeDriverManager().install(), chrome_options=option)
+    browser = webdriver.Chrome(executable_path="./chromedriver", chrome_options=option)
     browser.get("http://facebook.com")
     browser.maximize_window()
     browser.find_element_by_name("email").send_keys(email)
