@@ -12,6 +12,9 @@ def _extract_html(bs_data):
     postBigDict = list()
 
     for item in k:
+
+        # Post Text
+
         actualPosts = item.find_all(attrs={"data-testid": "post_message"})
         postDict = dict()
         for posts in actualPosts:
@@ -22,13 +25,41 @@ def _extract_html(bs_data):
 
             postDict['Post'] = text
 
-        postComments = item.find_all(attrs={"data-testid": "UFI2Comment/body"})
+        # Links
+
+        postLinks = item.find_all(class_="_6ks")
+        postDict['Link'] = ""
+        for postLink in postLinks:
+            postDict['Link'] = postLink.find('a').get('href')
+
+        # Images
+
+        postPictures = item.find_all(class_="scaledImageFitWidth img")
+        postDict['Image'] = ""
+        for postPicture in postPictures:
+            postDict['Image'] = postPicture.get('src')
+
+        # Comments
+
+        postComments = item.find_all(attrs={"data-testid": "UFI2Comment/root_depth_0"})
         postDict['Comments'] = dict()
 
         for comment in postComments:
             commenter = comment.find(class_="_6qw4").text
+            postDict['Comments'][commenter] = dict()
+
             comment_text = comment.find("span", class_="_3l3x").text
-            postDict['Comments'][commenter] = comment_text
+            postDict['Comments'][commenter]["text"] = comment_text
+
+            comment_link = comment.find(class_="_ns_")
+            if comment_link is not None:
+                postDict['Comments'][commenter]["link"] = comment_link.get("href")
+
+            comment_pic = comment.find(class_="_2txe")
+            if comment_pic is not None:
+                postDict['Comments'][commenter]["image"] = comment_pic.find(class_="img").get("src")
+
+        # Reactions
 
         toolBar = item.find_all(attrs={"role": "toolbar"})
 
@@ -59,7 +90,11 @@ def _extract_html(bs_data):
     return postBigDict
 
 
-def extract(page, numOfPost, email, password, infinite_scroll=False):
+def extract(page, numOfPost, infinite_scroll=False, scrape_comment=False):
+    with open('facebook_credentials.txt') as file:
+        email = file.readline().split('"')[1]
+        password = file.readline().split('"')[1]
+
     option = Options()
 
     option.add_argument("--disable-infobars")
@@ -118,25 +153,21 @@ def extract(page, numOfPost, email, password, infinite_scroll=False):
     # TODO: need to add more support for additional second level comments
     # TODO: ie. comment of a comment
 
-    moreComments = browser.find_elements_by_xpath('//a[@data-testid="UFI2CommentsPagerRenderer/pager_depth_0"]')
-
-    print("Scrolling through to click on more comments")
-
-    while len(moreComments) != 0:
-        for moreComment in moreComments:
-            action = webdriver.common.action_chains.ActionChains(browser)
-            try:
-                # move to where the comment button is
-                action.move_to_element_with_offset(moreComment, 5, 5)
-                action.perform()
-                moreComment.click()
-            except:
-                # do nothing right here
-                pass
-
+    if scrape_comment:
         moreComments = browser.find_elements_by_xpath('//a[@data-testid="UFI2CommentsPagerRenderer/pager_depth_0"]')
-
-    # time.sleep(100)
+        print("Scrolling through to click on more comments")
+        while len(moreComments) != 0:
+            for moreComment in moreComments:
+                action = webdriver.common.action_chains.ActionChains(browser)
+                try:
+                    # move to where the comment button is
+                    action.move_to_element_with_offset(moreComment, 5, 5)
+                    action.perform()
+                    moreComment.click()
+                except:
+                    # do nothing right here
+                    pass
+            moreComments = browser.find_elements_by_xpath('//a[@data-testid="UFI2CommentsPagerRenderer/pager_depth_0"]')
 
     # Now that the page is fully scrolled, grab the source code.
     source_data = browser.page_source
@@ -154,28 +185,37 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Facebook Page Scraper")
     required_parser = parser.add_argument_group("required arguments")
     required_parser.add_argument('-page', '-p', help="The Facebook Public Page you want to scrape", required=True)
-    required_parser.add_argument('-email', '-e', help="Facebook account email", required=True)
-    required_parser.add_argument('-password', '-pass', help="Facebook account password", required=True)
     required_parser.add_argument('-len', '-l', help="Number of Posts you want to scrape", type=int, required=True)
-    required_parser.add_argument('-infinite', '-i', help="Scroll until the end of the page (1 = infinite)", type=int,
-                                 required=True)
-    required_parser.add_argument('-usage', '-u', help="What to do with the data:"
+    optional_parser = parser.add_argument_group("optional arguments")
+    optional_parser.add_argument('-infinite', '-i',
+                                 help="Scroll until the end of the page (1 = infinite) (Default is 0)", type=int,
+                                 default=0)
+    optional_parser.add_argument('-usage', '-u', help="What to do with the data: "
                                                       "Print on Screen (PS), "
-                                                      "Write to Text File (WT)")
+                                                      "Write to Text File (WT) (Default is WT)", default="PS")
+
+    optional_parser.add_argument('-comments', '-c', help="Scrape ALL Comments of Posts (y/n) (Default is n). When "
+                                                         "enabled for pages where there are a lot of comments it can "
+                                                         "take a while", default="No")
     args = parser.parse_args()
 
     infinite = False
     if args.infinite == 1:
         infinite = True
 
-    postBigDict = extract(page=args.page, numOfPost=args.len, email=args.email, password=args.password,
-                          infinite_scroll=infinite)
+    scrape_comment = False
+    if args.comments == 'y':
+        scrape_comment = True
+
+    postBigDict = extract(page=args.page, numOfPost=args.len, infinite_scroll=infinite, scrape_comment=scrape_comment)
 
     if args.usage == "WT":
         with open('output.txt', 'w') as file:
             for post in postBigDict:
                 file.write(json.dumps(post))  # use json load to recover
     else:
-        print(postBigDict)
+        for post in postBigDict:
+            print(post)
+            print("\n")
 
     print("Finished")

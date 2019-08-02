@@ -5,14 +5,22 @@ Scrape Facebook Public Posts without using Facebook API
 ## What It can Do
 
 - Scrape Public Post Text
+    - Raw Text
+    - Picture
+    - Links
 - Scrape Likes and Top 3 React Numbers
 - Scrape Public Post Comments 
+    - Links in Comments
+    - Pictures in Comments
 
 ## Install Requirements
 
 Please make sure chrome is installed and ```chromedriver``` is placed in the same directory as the file
 
 Find out which version of ```chromedriver``` you need to download in this link [Chrome Web Driver](http://chromedriver.chromium.org/downloads).
+
+Place your Facebook login in info into ```facebook_credentials.txt```
+
 ```sh
 pip install -r requirements.txt
 ```
@@ -22,8 +30,8 @@ pip install -r requirements.txt
 #### 1. Use scraper.py to print to screen or to file
 
 ```
-usage: scraper.py [-h] -page PAGE -email EMAIL -password PASSWORD -len LEN
-                  -infinite INFINITE [-usage USAGE]
+usage: scraper.py [-h] -page PAGE -len LEN [-infinite INFINITE] [-usage USAGE]
+                  [-comments COMMENTS]
 
 Facebook Page Scraper
 
@@ -32,26 +40,28 @@ optional arguments:
 
 required arguments:
   -page PAGE, -p PAGE   The Facebook Public Page you want to scrape
-  -email EMAIL, -e EMAIL
-                        Facebook account email
-  -password PASSWORD, -pass PASSWORD
-                        Facebook account password
   -len LEN, -l LEN      Number of Posts you want to scrape
+
+optional arguments:
   -infinite INFINITE, -i INFINITE
                         Scroll until the end of the page (1 = infinite)
+                        (Default is 0)
   -usage USAGE, -u USAGE
-                        What to do with the data:Print on Screen (PS), Write
-                        to Text File (WT)
-```
+                        What to do with the data: Print on Screen (PS), Write
+                        to Text File (WT) (Default is WT)
+  -comments COMMENTS, -c COMMENTS
+                        Scrape ALL Comments of Posts (y/n) (Default is n).
+                        When enabled for pages where there are a lot of
+                        comments it can take a while
 
-Example: ```python scraper.py -page nytimes -email user@mail.com -password 123456 -len 1 -infinite 0 -usage WT```
+```
 
 #### 2. Use ```extract()``` to grab list of posts for additional parsing
 
 ```
 from scraper import extract
 
-list = extract(page, email, etc..)
+list = extract(page, len, etc..)
 
 # do what you what with the list 
 ```
@@ -61,9 +71,17 @@ Return value of ```extract()``` :
 ```python
 [
 {'Post': 'Text text text text text....',
+ 'Link' : 'https://link.com',
+ 'Image' : 'https://image.com',
  'Comments': {
-        'name1' : 'Text text...',
-        'name2' : 'Text text...',
+        'name1' : {
+            'text' : 'Text text...',
+            'link' : 'https://link.com',
+            'image': 'https://image.com'
+         }
+        'name2' : {
+            ...
+            }
          ...
          },
  'Reaction' : { # Reaction only contains the top3 reactions
@@ -79,4 +97,6 @@ Return value of ```extract()``` :
 
 - Please use this code for Educational purposes only
 - Will continue to add additional features and data
-
+    - comment chains scraping
+    - comment reaction scraping
+    - different comment display (Most Relevant, New, etc)
