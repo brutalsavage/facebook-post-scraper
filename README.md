@@ -7,7 +7,7 @@ Scrape Facebook Public Posts without using Facebook API
 - Scrape Public Post Text
     - Raw Text
     - Picture
-    - Links
+    - Link
 - Scrape Likes and Top 3 React Numbers
 - Scrape Public Post Comments 
     - Links in Comments
@@ -63,7 +63,7 @@ from scraper import extract
 
 list = extract(page, len, etc..)
 
-# do what you what with the list 
+# do what you want with the list 
 ```
 
 Return value of ```extract()``` :
