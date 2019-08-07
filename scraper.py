@@ -82,6 +82,10 @@ def _extract_html(bs_data):
             for toolBar_child_child in toolBar_child.children:
 
                 num = toolBar_child_child['aria-label'].split()[0]
+
+                # fix weird ',' happening in some reaction values
+                num = num.replace(',', '.')
+
                 if 'K' in num:
                     realNum = float(num[:-1]) * 1000
                 else:
