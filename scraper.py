@@ -45,6 +45,10 @@ def _extract_html(bs_data):
         postDict['Comments'] = dict()
 
         for comment in postComments:
+
+            if comment.find(class_="_6qw4") is None:
+                continue
+
             commenter = comment.find(class_="_6qw4").text
             postDict['Comments'][commenter] = dict()
 
