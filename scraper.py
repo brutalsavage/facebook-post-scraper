@@ -52,9 +52,10 @@ def _extract_html(bs_data):
             commenter = comment.find(class_="_6qw4").text
             postDict['Comments'][commenter] = dict()
 
-            comment_text = comment.find("span", class_="_3l3x").text
-            postDict['Comments'][commenter]["text"] = comment_text
-
+            comment_text = comment.find("span", class_="_3l3x")
+            if comment_text is not None:
+                postDict['Comments'][commenter]["text"] = comment_text.text
+        
             comment_link = comment.find(class_="_ns_")
             if comment_link is not None:
                 postDict['Comments'][commenter]["link"] = comment_link.get("href")
