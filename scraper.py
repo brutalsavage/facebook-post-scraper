@@ -1,6 +1,7 @@
 import argparse
 import time
 import json
+import csv
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -15,15 +16,22 @@ def _extract_html(bs_data):
 
         # Post Text
 
+        
         actualPosts = item.find_all(attrs={"data-testid": "post_message"})
-        postDict = dict()
-        for posts in actualPosts:
-            paragraphs = posts.find_all('p')
-            text = ""
-            for index in range(0, len(paragraphs)):
-                text += paragraphs[index].text
+        
 
-            postDict['Post'] = text
+        postDict = dict()
+        if actualPosts :
+            for posts in actualPosts:
+                paragraphs = posts.find_all('p')
+                text = ""
+                for index in range(0, len(paragraphs)):
+                    text += paragraphs[index].text
+
+                postDict['Post'] = text
+
+        else:
+            postDict['Post'] = ""
 
         # Links
 
@@ -38,6 +46,20 @@ def _extract_html(bs_data):
         postDict['Image'] = ""
         for postPicture in postPictures:
             postDict['Image'] = postPicture.get('src')
+
+        # Shares
+        print("in shares")
+        postShares= item.find_all(class_="_4vn1")
+        postDict['Shares'] = ""
+        for postShare in postShares:
+            
+            x = postShare.string
+            if x is not None:
+                x = x.split(">",1)
+                print(x)
+                postDict['Shares'] = x
+            else:
+                postDict['Shares'] = "0"
 
         # Comments
 
@@ -115,7 +137,7 @@ def extract(page, numOfPost, infinite_scroll=False, scrape_comment=False):
         "profile.default_content_setting_values.notifications": 1
     })
 
-    browser = webdriver.Chrome(executable_path="./chromedriver", chrome_options=option)
+    browser = webdriver.Chrome(executable_path="./chromedriver", options=option)
     browser.get("http://facebook.com")
     browser.maximize_window()
     browser.find_element_by_name("email").send_keys(email)
@@ -201,7 +223,7 @@ if __name__ == "__main__":
                                  default=0)
     optional_parser.add_argument('-usage', '-u', help="What to do with the data: "
                                                       "Print on Screen (PS), "
-                                                      "Write to Text File (WT) (Default is WT)", default="PS")
+                                                      "Write to Text File (WT) (Default is WT)", default="CSV")
 
     optional_parser.add_argument('-comments', '-c', help="Scrape ALL Comments of Posts (y/n) (Default is n). When "
                                                          "enabled for pages where there are a lot of comments it can "
@@ -222,9 +244,20 @@ if __name__ == "__main__":
         with open('output.txt', 'w') as file:
             for post in postBigDict:
                 file.write(json.dumps(post))  # use json load to recover
+
+    elif args.usage == "CSV":
+        with open('data.csv', 'w',) as csvfile:
+           writer = csv.writer(csvfile)
+           #writer.writerow(['Post', 'Link', 'Image', 'Comments', 'Reaction'])
+           writer.writerow(['Post', 'Link', 'Image', 'Comments', 'Reaction', 'Shares'])
+
+           for post in postBigDict:
+              writer.writerow([post['Post'], post['Link'],post['Image'], post['Comments'], post['Reaction'], post['Shares']])
+              #writer.writerow([post['Post'], post['Link'],post['Image'], post['Comments'], post['Reaction']])
+
     else:
         for post in postBigDict:
-            print(post)
+            #print(post)
             print("\n")
 
     print("Finished")
