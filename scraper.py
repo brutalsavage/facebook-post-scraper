@@ -63,8 +63,12 @@ def _extract_html(bs_data):
 
         # Comments
 
-        postComments = item.find_all(attrs={"data-testid": "UFI2Comment/root_depth_0"})
+        postComments = item.find_all(attrs={"aria-label" :"Comment"})
+
+
         postDict['Comments'] = dict()
+
+        #print(postDict)
 
         for comment in postComments:
 
@@ -75,6 +79,7 @@ def _extract_html(bs_data):
             postDict['Comments'][commenter] = dict()
 
             comment_text = comment.find("span", class_="_3l3x")
+
             if comment_text is not None:
                 postDict['Comments'][commenter]["text"] = comment_text.text
         
@@ -86,35 +91,45 @@ def _extract_html(bs_data):
             if comment_pic is not None:
                 postDict['Comments'][commenter]["image"] = comment_pic.find(class_="img").get("src")
 
-        # Reactions
 
-        toolBar = item.find_all(attrs={"role": "toolbar"})
+            #TODO: management comments of comments, the reply button has the same class (class="_4sxc _42ft)
+            # as the button see more comments, for this reason they are extracted from the web page
 
-        if not toolBar:  # pretty fun
-            continue
+            #HINT: use this methods and class to extract them
+            #post_replies=item.find_all(attrs={"aria-label" :"Comment reply"})
 
-        postDict['Reaction'] = dict()
 
-        for toolBar_child in toolBar[0].children:
 
-            str = toolBar_child['data-testid']
-            reaction = str.split("UFI2TopReactions/tooltip_")[1]
 
-            postDict['Reaction'][reaction] = 0
-
-            for toolBar_child_child in toolBar_child.children:
-
-                num = toolBar_child_child['aria-label'].split()[0]
-
-                # fix weird ',' happening in some reaction values
-                num = num.replace(',', '.')
-
-                if 'K' in num:
-                    realNum = float(num[:-1]) * 1000
-                else:
-                    realNum = float(num)
-
-                postDict['Reaction'][reaction] = realNum
+        # # Reactions
+        #
+        # toolBar = item.find_all(attrs={"role": "toolbar"})
+        #
+        # if not toolBar:  # pretty fun
+        #     continue
+        #
+        # postDict['Reaction'] = dict()
+        #
+        # for toolBar_child in toolBar[0].children:
+        #
+        #     str = toolBar_child['data-testid']
+        #     reaction = str.split("UFI2TopReactions/tooltip_")[1]
+        #
+        #     postDict['Reaction'][reaction] = 0
+        #
+        #     for toolBar_child_child in toolBar_child.children:
+        #
+        #         num = toolBar_child_child['aria-label'].split()[0]
+        #
+        #         # fix weird ',' happening in some reaction values
+        #         num = num.replace(',', '.')
+        #
+        #         if 'K' in num:
+        #             realNum = float(num[:-1]) * 1000
+        #         else:
+        #             realNum = float(num)
+        #
+        #         postDict['Reaction'][reaction] = realNum
 
         postBigDict.append(postDict)
 
@@ -122,7 +137,7 @@ def _extract_html(bs_data):
 
 
 def extract(page, numOfPost, infinite_scroll=False, scrape_comment=False):
-    with open('facebook_credentials.txt') as file:
+    with open('./Needs/facebook_credentials.txt') as file:
         email = file.readline().split('"')[1]
         password = file.readline().split('"')[1]
 
@@ -137,7 +152,7 @@ def extract(page, numOfPost, infinite_scroll=False, scrape_comment=False):
         "profile.default_content_setting_values.notifications": 1
     })
 
-    browser = webdriver.Chrome(executable_path="./chromedriver", options=option)
+    browser = webdriver.Chrome(executable_path="/usr/local/bin/chromedriver", options=option)
     browser.get("http://facebook.com")
     browser.maximize_window()
     browser.find_element_by_name("email").send_keys(email)
@@ -185,7 +200,8 @@ def extract(page, numOfPost, infinite_scroll=False, scrape_comment=False):
     # TODO: ie. comment of a comment
 
     if scrape_comment:
-        moreComments = browser.find_elements_by_xpath('//a[@data-testid="UFI2CommentsPagerRenderer/pager_depth_0"]')
+
+        moreComments = browser.find_elements_by_xpath('//a[@class="_4sxc _42ft"]')
         print("Scrolling through to click on more comments")
         while len(moreComments) != 0:
             for moreComment in moreComments:
@@ -198,7 +214,8 @@ def extract(page, numOfPost, infinite_scroll=False, scrape_comment=False):
                 except:
                     # do nothing right here
                     pass
-            moreComments = browser.find_elements_by_xpath('//a[@data-testid="UFI2CommentsPagerRenderer/pager_depth_0"]')
+
+            moreComments = browser.find_elements_by_xpath('//a[@class="_4sxc _42ft"]')
 
     # Now that the page is fully scrolled, grab the source code.
     source_data = browser.page_source
@@ -249,15 +266,14 @@ if __name__ == "__main__":
         with open('data.csv', 'w',) as csvfile:
            writer = csv.writer(csvfile)
            #writer.writerow(['Post', 'Link', 'Image', 'Comments', 'Reaction'])
-           writer.writerow(['Post', 'Link', 'Image', 'Comments', 'Reaction', 'Shares'])
+           writer.writerow(['Post', 'Link', 'Image', 'Comments', 'Shares'])
 
            for post in postBigDict:
-              writer.writerow([post['Post'], post['Link'],post['Image'], post['Comments'], post['Reaction'], post['Shares']])
+              writer.writerow([post['Post'], post['Link'],post['Image'], post['Comments'], post['Shares']])
               #writer.writerow([post['Post'], post['Link'],post['Image'], post['Comments'], post['Reaction']])
 
     else:
         for post in postBigDict:
-            #print(post)
             print("\n")
 
     print("Finished")
