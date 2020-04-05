@@ -9,6 +9,11 @@ from bs4 import BeautifulSoup as bs
 
 
 def _extract_html(bs_data):
+
+    #Add to check
+    with open('./bs.html',"w") as file:
+        file.write(str(bs_data.prettify()))
+
     k = bs_data.find_all(class_="_5pcr userContentWrapper")
     postBigDict = list()
 
@@ -91,12 +96,54 @@ def _extract_html(bs_data):
             if comment_pic is not None:
                 postDict['Comments'][commenter]["image"] = comment_pic.find(class_="img").get("src")
 
+            commentList = item.find('ul', {'class': '_7791'})
+            if commentList:
+                postDict['Comments'] = dict()
+                comment=commentList.find_all('li')
+                if comment:
+                    for litag in comment:
+                        aria = litag.find(attrs={"aria-label": "Comment"})
+                        if aria:
+                            commenter = aria.find(class_="_6qw4").text
+                            postDict['Comments'][commenter] = dict()
+                            comment_text = litag.find("span", class_="_3l3x")
+                            if comment_text:
+                                postDict['Comments'][commenter]["text"] = comment_text.text
+                                #print(str(litag)+"\n")
+            
+                            comment_link = litag.find(class_="_ns_")
+                            if comment_link is not None:
+                                postDict['Comments'][commenter]["link"] = comment_link.get("href")
 
-            #TODO: management comments of comments, the reply button has the same class (class="_4sxc _42ft)
-            # as the button see more comments, for this reason they are extracted from the web page
+                            comment_pic = litag.find(class_="_2txe")
+                            if comment_pic is not None:
+                                postDict['Comments'][commenter]["image"] = comment_pic.find(class_="img").get("src")    
 
-            #HINT: use this methods and class to extract them
-            #post_replies=item.find_all(attrs={"aria-label" :"Comment reply"})
+
+                            repliesList=litag.find(class_="_2h2j")
+                            if repliesList:
+                                reply = repliesList.find_all('li')
+                                if reply:
+                                    postDict['Comments'][commenter]['reply'] = dict()
+                                    for litag2 in reply:
+                                        aria2 = litag2.find(attrs={"aria-label": "Comment reply"})
+                                        if aria2:
+                                            replier = aria2.find(class_="_6qw4").text
+                                            if replier:
+                                                postDict['Comments'][commenter]['reply'][replier] = dict()
+                                                    
+                                                reply_text = litag2.find("span", class_="_3l3x")
+                                                if reply_text:
+                                                    postDict['Comments'][commenter]['reply'][replier][
+                                                             "reply_text"] = reply_text.text
+
+                                                r_link = litag2.find(class_="_ns_")
+                                                if r_link is not None:
+                                                    postDict['Comments'][commenter]['reply']["link"] = r_link.get("href")
+
+                                                r_pic = litag2.find(class_="_2txe")
+                                                if r_pic is not None:
+                                                    postDict['Comments'][commenter]['reply']["image"] = r_pic.find(class_="img").get("src")
 
 
 
@@ -131,13 +178,17 @@ def _extract_html(bs_data):
         #
         #         postDict['Reaction'][reaction] = realNum
 
+        #Add to check
         postBigDict.append(postDict)
+        with open('./postBigDict.txt','w') as file:
+            file.write(str(postBigDict))
 
     return postBigDict
 
 
 def extract(page, numOfPost, infinite_scroll=False, scrape_comment=False):
-    with open('./Needs/facebook_credentials.txt') as file:
+
+    with open('facebook_credentials.txt') as file:
         email = file.readline().split('"')[1]
         password = file.readline().split('"')[1]
 
@@ -257,6 +308,8 @@ if __name__ == "__main__":
 
     postBigDict = extract(page=args.page, numOfPost=args.len, infinite_scroll=infinite, scrape_comment=scrape_comment)
 
+
+    #TODO: rewrite parser
     if args.usage == "WT":
         with open('output.txt', 'w') as file:
             for post in postBigDict:
