@@ -97,6 +97,6 @@ Return value of ```extract()``` :
 
 - Please use this code for Educational purposes only
 - Will continue to add additional features and data
-    - comment chains scraping
+    - ~comment chains scraping~
     - comment reaction scraping
     - different comment display (Most Relevant, New, etc)
