@@ -96,7 +96,6 @@ def _extract_html(bs_data):
             if comment_pic is not None:
                 postDict['Comments'][commenter]["image"] = comment_pic.find(class_="img").get("src")
 
-
             commentList = item.find('ul', {'class': '_7791'})
             if commentList:
                 postDict['Comments'] = dict()
@@ -188,7 +187,8 @@ def _extract_html(bs_data):
 
 
 def extract(page, numOfPost, infinite_scroll=False, scrape_comment=False):
-    with open('./facebook_credentials.txt') as file:
+
+    with open('facebook_credentials.txt') as file:
         email = file.readline().split('"')[1]
         password = file.readline().split('"')[1]
 
