@@ -7,7 +7,12 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup as bs
 
-# extract functions
+
+with open('facebook_credentials.txt') as file:
+    EMAIL = file.readline().split('"')[1]
+    PASSWORD = file.readline().split('"')[1]
+
+
 def _extract_post_text(item):
     actualPosts = item.find_all(attrs={"data-testid": "post_message"})
     text = ""
@@ -47,7 +52,6 @@ def _extract_image(item):
 def _extract_shares(item):
     postShares = item.find_all(class_="_4vn1")
     shares = ""
-    
     for postShare in postShares:
 
         x = postShare.string
@@ -56,14 +60,13 @@ def _extract_shares(item):
             shares = x
         else:
             shares = "0"
-            
     return shares
 
 
 def _extract_comments(item):
     postComments = item.find_all(attrs={"aria-label": "Comment"})
     comments = dict()
-    
+    # print(postDict)
     for comment in postComments:
         if comment.find(class_="_6qw4") is None:
             continue
@@ -180,13 +183,12 @@ def _extract_html(bs_data):
         postDict['Image'] = _extract_image(item)
         postDict['Shares'] = _extract_shares(item)
         postDict['Comments'] = _extract_comments(item)
-        # Reaction is not currently working
         # postDict['Reaction'] = _extract_reaction(item)
 
         #Add to check
         postBigDict.append(postDict)
         with open('./postBigDict.json','w', encoding='utf-8') as file:
-            file.write(json.dumps(postBigDict))
+            file.write(json.dumps(postBigDict, ensure_ascii=False).encode('utf-8').decode())
 
     return postBigDict
 
@@ -200,35 +202,19 @@ def _login(browser, email, password):
     time.sleep(5)
 
 
-def extract(chromedriver_path, page, numOfPost, infinite_scroll=False, scrape_comment=False):
-    with open('facebook_credentials.txt') as file:
-        email = file.readline().split('"')[1]
-        password = file.readline().split('"')[1]
-
-    option = Options()
-
-    option.add_argument("--disable-infobars")
-    option.add_argument("start-maximized")
-    option.add_argument("--disable-extensions")
-
-    # Pass the argument 1 to allow and 2 to block
-    option.add_experimental_option("prefs", {
-        "profile.default_content_setting_values.notifications": 1
-    })
-
-    browser = webdriver.Chrome(executable_path=chromedriver_path, options=option)
-    _login(browser, email, password)
-    browser.get(page)
-
+def _count_needed_scrolls(browser, infinite_scroll, numOfPost):
     if infinite_scroll:
         lenOfPage = browser.execute_script(
-            "window.scrollTo(0, document.body.scrollHeight);var lenOfPage=document.body.scrollHeight;return lenOfPage;")
+            "window.scrollTo(0, document.body.scrollHeight);var lenOfPage=document.body.scrollHeight;return lenOfPage;"
+        )
     else:
         # roughly 8 post per scroll kindaOf
         lenOfPage = int(numOfPost / 8)
-
     print("Number Of Scrolls Needed " + str(lenOfPage))
+    return lenOfPage
 
+
+def _scroll(browser, infinite_scroll, lenOfPage):
     lastCount = -1
     match = False
 
@@ -253,6 +239,24 @@ def extract(chromedriver_path, page, numOfPost, infinite_scroll=False, scrape_co
 
         if lastCount == lenOfPage:
             match = True
+
+
+def extract(chromedriver_path, page, numOfPost, infinite_scroll=False, scrape_comment=False):
+    option = Options()
+    option.add_argument("--disable-infobars")
+    option.add_argument("start-maximized")
+    option.add_argument("--disable-extensions")
+
+    # Pass the argument 1 to allow and 2 to block
+    option.add_experimental_option("prefs", {
+        "profile.default_content_setting_values.notifications": 1
+    })
+
+    browser = webdriver.Chrome(executable_path=chromedriver_path, options=option)
+    _login(browser, EMAIL, PASSWORD)
+    browser.get(page)
+    lenOfPage = _count_needed_scrolls(browser, infinite_scroll, numOfPost)
+    _scroll(browser, infinite_scroll, lenOfPage)
 
     # click on all the comments to scrape them all!
     # TODO: need to add more support for additional second level comments

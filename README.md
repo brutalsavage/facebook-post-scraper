@@ -21,6 +21,10 @@ Find out which version of ```chromedriver``` you need to download in this link [
 
 Place your Facebook login in info into ```facebook_credentials.txt```
 
+Optional:
+To download all videos from a specific page, make sure that [youtube-dl](https://github.com/ytdl-org/youtube-dl/) binary is downloaded locally.
+
+
 ```sh
 pip install -r requirements.txt
 ```
@@ -91,6 +95,12 @@ Return value of ```extract()``` :
          }}
   ...
 ]
+```
+
+#### 3. Use ```download_entire_page_videos``` to download all videos from a specific Facebook page
+Example:
+```
+download_entire_page_videos.py --chromedriver chromedriver.exe --youtube_dl youtube-dl.exe --fbpage https://www.facebook.com/groups/[GROUP_ID]/ --numofposts 100
 ```
 
 ### Note:
