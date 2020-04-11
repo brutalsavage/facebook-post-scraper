@@ -7,7 +7,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup as bs
 
-
+# extract functions
 def _extract_post_text(item):
     actualPosts = item.find_all(attrs={"data-testid": "post_message"})
     text = ""
@@ -47,6 +47,7 @@ def _extract_image(item):
 def _extract_shares(item):
     postShares = item.find_all(class_="_4vn1")
     shares = ""
+    
     for postShare in postShares:
 
         x = postShare.string
@@ -55,13 +56,14 @@ def _extract_shares(item):
             shares = x
         else:
             shares = "0"
+            
     return shares
 
 
 def _extract_comments(item):
     postComments = item.find_all(attrs={"aria-label": "Comment"})
     comments = dict()
-    # print(postDict)
+    
     for comment in postComments:
         if comment.find(class_="_6qw4") is None:
             continue
@@ -178,6 +180,7 @@ def _extract_html(bs_data):
         postDict['Image'] = _extract_image(item)
         postDict['Shares'] = _extract_shares(item)
         postDict['Comments'] = _extract_comments(item)
+        # Reaction is not currently working
         # postDict['Reaction'] = _extract_reaction(item)
 
         #Add to check
