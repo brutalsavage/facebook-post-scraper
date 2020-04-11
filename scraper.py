@@ -8,186 +8,196 @@ from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup as bs
 
 
+def _extract_post_text(item):
+    actualPosts = item.find_all(attrs={"data-testid": "post_message"})
+    text = ""
+    if actualPosts:
+        for posts in actualPosts:
+            paragraphs = posts.find_all('p')
+            text = ""
+            for index in range(0, len(paragraphs)):
+                text += paragraphs[index].text
+    return text
+
+
+def _extract_link(item):
+    postLinks = item.find_all(class_="_6ks")
+    link = ""
+    for postLink in postLinks:
+        link = postLink.find('a').get('href')
+    return link
+
+
+def _extract_post_id(item):
+    postIds = item.find_all(class_="_5pcq")
+    post_id = ""
+    for postId in postIds:
+        post_id = f"https://www.facebook.com{postId.get('href')}"
+    return post_id
+
+
+def _extract_image(item):
+    postPictures = item.find_all(class_="scaledImageFitWidth img")
+    image = ""
+    for postPicture in postPictures:
+        image = postPicture.get('src')
+    return image
+
+
+def _extract_shares(item):
+    postShares = item.find_all(class_="_4vn1")
+    shares = ""
+    for postShare in postShares:
+
+        x = postShare.string
+        if x is not None:
+            x = x.split(">", 1)
+            shares = x
+        else:
+            shares = "0"
+    return shares
+
+
+def _extract_comments(item):
+    postComments = item.find_all(attrs={"aria-label": "Comment"})
+    comments = dict()
+    # print(postDict)
+    for comment in postComments:
+        if comment.find(class_="_6qw4") is None:
+            continue
+
+        commenter = comment.find(class_="_6qw4").text
+        comments[commenter] = dict()
+
+        comment_text = comment.find("span", class_="_3l3x")
+
+        if comment_text is not None:
+            comments[commenter]["text"] = comment_text.text
+
+        comment_link = comment.find(class_="_ns_")
+        if comment_link is not None:
+            comments[commenter]["link"] = comment_link.get("href")
+
+        comment_pic = comment.find(class_="_2txe")
+        if comment_pic is not None:
+            comments[commenter]["image"] = comment_pic.find(class_="img").get("src")
+
+        commentList = item.find('ul', {'class': '_7791'})
+        if commentList:
+            comments = dict()
+            comment = commentList.find_all('li')
+            if comment:
+                for litag in comment:
+                    aria = litag.find(attrs={"aria-label": "Comment"})
+                    if aria:
+                        commenter = aria.find(class_="_6qw4").text
+                        comments[commenter] = dict()
+                        comment_text = litag.find("span", class_="_3l3x")
+                        if comment_text:
+                            comments[commenter]["text"] = comment_text.text
+                            # print(str(litag)+"\n")
+
+                        comment_link = litag.find(class_="_ns_")
+                        if comment_link is not None:
+                            comments[commenter]["link"] = comment_link.get("href")
+
+                        comment_pic = litag.find(class_="_2txe")
+                        if comment_pic is not None:
+                            comments[commenter]["image"] = comment_pic.find(class_="img").get("src")
+
+                        repliesList = litag.find(class_="_2h2j")
+                        if repliesList:
+                            reply = repliesList.find_all('li')
+                            if reply:
+                                comments[commenter]['reply'] = dict()
+                                for litag2 in reply:
+                                    aria2 = litag2.find(attrs={"aria-label": "Comment reply"})
+                                    if aria2:
+                                        replier = aria2.find(class_="_6qw4").text
+                                        if replier:
+                                            comments[commenter]['reply'][replier] = dict()
+
+                                            reply_text = litag2.find("span", class_="_3l3x")
+                                            if reply_text:
+                                                comments[commenter]['reply'][replier][
+                                                    "reply_text"] = reply_text.text
+
+                                            r_link = litag2.find(class_="_ns_")
+                                            if r_link is not None:
+                                                comments[commenter]['reply']["link"] = r_link.get("href")
+
+                                            r_pic = litag2.find(class_="_2txe")
+                                            if r_pic is not None:
+                                                comments[commenter]['reply']["image"] = r_pic.find(
+                                                    class_="img").get("src")
+    return comments
+
+
+def _extract_reaction(item):
+    toolBar = item.find_all(attrs={"role": "toolbar"})
+
+    if not toolBar:  # pretty fun
+        return
+    reaction = dict()
+    for toolBar_child in toolBar[0].children:
+        str = toolBar_child['data-testid']
+        reaction = str.split("UFI2TopReactions/tooltip_")[1]
+
+        reaction[reaction] = 0
+
+        for toolBar_child_child in toolBar_child.children:
+
+            num = toolBar_child_child['aria-label'].split()[0]
+
+            # fix weird ',' happening in some reaction values
+            num = num.replace(',', '.')
+
+            if 'K' in num:
+                realNum = float(num[:-1]) * 1000
+            else:
+                realNum = float(num)
+
+            reaction[reaction] = realNum
+    return reaction
+
+
 def _extract_html(bs_data):
 
     #Add to check
-    with open('./bs.html',"w") as file:
+    with open('./bs.html',"w", encoding="utf-8") as file:
         file.write(str(bs_data.prettify()))
 
     k = bs_data.find_all(class_="_5pcr userContentWrapper")
     postBigDict = list()
 
     for item in k:
-
-        # Post Text
-
-        
-        actualPosts = item.find_all(attrs={"data-testid": "post_message"})
-        
-
         postDict = dict()
-        if actualPosts :
-            for posts in actualPosts:
-                paragraphs = posts.find_all('p')
-                text = ""
-                for index in range(0, len(paragraphs)):
-                    text += paragraphs[index].text
-
-                postDict['Post'] = text
-
-        else:
-            postDict['Post'] = ""
-
-        # Links
-
-        postLinks = item.find_all(class_="_6ks")
-        postDict['Link'] = ""
-        for postLink in postLinks:
-            postDict['Link'] = postLink.find('a').get('href')
-
-        # Images
-
-        postPictures = item.find_all(class_="scaledImageFitWidth img")
-        postDict['Image'] = ""
-        for postPicture in postPictures:
-            postDict['Image'] = postPicture.get('src')
-
-        # Shares
-        print("in shares")
-        postShares= item.find_all(class_="_4vn1")
-        postDict['Shares'] = ""
-        for postShare in postShares:
-            
-            x = postShare.string
-            if x is not None:
-                x = x.split(">",1)
-                print(x)
-                postDict['Shares'] = x
-            else:
-                postDict['Shares'] = "0"
-
-        # Comments
-
-        postComments = item.find_all(attrs={"aria-label" :"Comment"})
-
-
-        postDict['Comments'] = dict()
-
-        #print(postDict)
-
-        for comment in postComments:
-
-            if comment.find(class_="_6qw4") is None:
-                continue
-
-            commenter = comment.find(class_="_6qw4").text
-            postDict['Comments'][commenter] = dict()
-
-            comment_text = comment.find("span", class_="_3l3x")
-
-            if comment_text is not None:
-                postDict['Comments'][commenter]["text"] = comment_text.text
-        
-            comment_link = comment.find(class_="_ns_")
-            if comment_link is not None:
-                postDict['Comments'][commenter]["link"] = comment_link.get("href")
-
-            comment_pic = comment.find(class_="_2txe")
-            if comment_pic is not None:
-                postDict['Comments'][commenter]["image"] = comment_pic.find(class_="img").get("src")
-
-            commentList = item.find('ul', {'class': '_7791'})
-            if commentList:
-                postDict['Comments'] = dict()
-                comment=commentList.find_all('li')
-                if comment:
-                    for litag in comment:
-                        aria = litag.find(attrs={"aria-label": "Comment"})
-                        if aria:
-                            commenter = aria.find(class_="_6qw4").text
-                            postDict['Comments'][commenter] = dict()
-                            comment_text = litag.find("span", class_="_3l3x")
-                            if comment_text:
-                                postDict['Comments'][commenter]["text"] = comment_text.text
-                                #print(str(litag)+"\n")
-            
-                            comment_link = litag.find(class_="_ns_")
-                            if comment_link is not None:
-                                postDict['Comments'][commenter]["link"] = comment_link.get("href")
-
-                            comment_pic = litag.find(class_="_2txe")
-                            if comment_pic is not None:
-                                postDict['Comments'][commenter]["image"] = comment_pic.find(class_="img").get("src")    
-
-
-                            repliesList=litag.find(class_="_2h2j")
-                            if repliesList:
-                                reply = repliesList.find_all('li')
-                                if reply:
-                                    postDict['Comments'][commenter]['reply'] = dict()
-                                    for litag2 in reply:
-                                        aria2 = litag2.find(attrs={"aria-label": "Comment reply"})
-                                        if aria2:
-                                            replier = aria2.find(class_="_6qw4").text
-                                            if replier:
-                                                postDict['Comments'][commenter]['reply'][replier] = dict()
-                                                    
-                                                reply_text = litag2.find("span", class_="_3l3x")
-                                                if reply_text:
-                                                    postDict['Comments'][commenter]['reply'][replier][
-                                                             "reply_text"] = reply_text.text
-
-                                                r_link = litag2.find(class_="_ns_")
-                                                if r_link is not None:
-                                                    postDict['Comments'][commenter]['reply']["link"] = r_link.get("href")
-
-                                                r_pic = litag2.find(class_="_2txe")
-                                                if r_pic is not None:
-                                                    postDict['Comments'][commenter]['reply']["image"] = r_pic.find(class_="img").get("src")
-
-
-
-
-        # # Reactions
-        #
-        # toolBar = item.find_all(attrs={"role": "toolbar"})
-        #
-        # if not toolBar:  # pretty fun
-        #     continue
-        #
-        # postDict['Reaction'] = dict()
-        #
-        # for toolBar_child in toolBar[0].children:
-        #
-        #     str = toolBar_child['data-testid']
-        #     reaction = str.split("UFI2TopReactions/tooltip_")[1]
-        #
-        #     postDict['Reaction'][reaction] = 0
-        #
-        #     for toolBar_child_child in toolBar_child.children:
-        #
-        #         num = toolBar_child_child['aria-label'].split()[0]
-        #
-        #         # fix weird ',' happening in some reaction values
-        #         num = num.replace(',', '.')
-        #
-        #         if 'K' in num:
-        #             realNum = float(num[:-1]) * 1000
-        #         else:
-        #             realNum = float(num)
-        #
-        #         postDict['Reaction'][reaction] = realNum
+        postDict['Post'] = _extract_post_text(item)
+        postDict['Link'] = _extract_link(item)
+        postDict['PostId'] = _extract_post_id(item)
+        postDict['Image'] = _extract_image(item)
+        postDict['Shares'] = _extract_shares(item)
+        postDict['Comments'] = _extract_comments(item)
+        # postDict['Reaction'] = _extract_reaction(item)
 
         #Add to check
         postBigDict.append(postDict)
-        with open('./postBigDict.txt','w') as file:
-            file.write(str(postBigDict))
+        with open('./postBigDict.json','w', encoding='utf-8') as file:
+            file.write(json.dumps(postBigDict))
 
     return postBigDict
 
 
-def extract(page, numOfPost, infinite_scroll=False, scrape_comment=False):
+def _login(browser, email, password):
+    browser.get("http://facebook.com")
+    browser.maximize_window()
+    browser.find_element_by_name("email").send_keys(email)
+    browser.find_element_by_name("pass").send_keys(password)
+    browser.find_element_by_id('loginbutton').click()
+    time.sleep(5)
 
+
+def extract(chromedriver_path, page, numOfPost, infinite_scroll=False, scrape_comment=False):
     with open('facebook_credentials.txt') as file:
         email = file.readline().split('"')[1]
         password = file.readline().split('"')[1]
@@ -203,14 +213,9 @@ def extract(page, numOfPost, infinite_scroll=False, scrape_comment=False):
         "profile.default_content_setting_values.notifications": 1
     })
 
-    browser = webdriver.Chrome(executable_path="/usr/local/bin/chromedriver", options=option)
-    browser.get("http://facebook.com")
-    browser.maximize_window()
-    browser.find_element_by_name("email").send_keys(email)
-    browser.find_element_by_name("pass").send_keys(password)
-    browser.find_element_by_id('loginbutton').click()
-
-    browser.get("http://facebook.com/" + page + "/posts")
+    browser = webdriver.Chrome(executable_path=chromedriver_path, options=option)
+    _login(browser, email, password)
+    browser.get(page)
 
     if infinite_scroll:
         lenOfPage = browser.execute_script(
