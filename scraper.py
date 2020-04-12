@@ -241,7 +241,7 @@ def _scroll(browser, infinite_scroll, lenOfPage):
             match = True
 
 
-def extract(chromedriver_path, page, numOfPost, infinite_scroll=False, scrape_comment=False):
+def extract(page, numOfPost, infinite_scroll=False, scrape_comment=False):
     option = Options()
     option.add_argument("--disable-infobars")
     option.add_argument("start-maximized")
@@ -252,7 +252,8 @@ def extract(chromedriver_path, page, numOfPost, infinite_scroll=False, scrape_co
         "profile.default_content_setting_values.notifications": 1
     })
 
-    browser = webdriver.Chrome(executable_path=chromedriver_path, options=option)
+    # chromedriver should be in the same folder as file
+    browser = webdriver.Chrome(executable_path="./chromedriver", options=option)
     _login(browser, EMAIL, PASSWORD)
     browser.get(page)
     lenOfPage = _count_needed_scrolls(browser, infinite_scroll, numOfPost)
