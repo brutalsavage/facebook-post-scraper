@@ -36,10 +36,10 @@ def _extract_link(item):
 def _extract_post_id(item):
     postIds = item.find_all(class_="_5pcq")
     post_id = ""
-    for postLink in postLinks:
-        currlink = postLink.find('a').get('href')
+    for postId in postIds:
+        currlink = postId.get('href')
         if currlink.startswith('/'):
-            post_id = currlink.split('?')[0]
+            post_id = f"https://www.facebook.com{currlink.split('?')[0]}"
     return post_id
 
 
