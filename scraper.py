@@ -39,8 +39,8 @@ def _extract_post_id(item):
     for postLink in postLinks:
         currlink = postLink.find('a').get('href')
         if currlink.startswith('/'):
-            link = currlink.split('?')[0]
-    return link
+            post_id = currlink.split('?')[0]
+    return post_id
 
 
 def _extract_image(item):
