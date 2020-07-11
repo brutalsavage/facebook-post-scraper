@@ -2,6 +2,7 @@ import argparse
 import time
 import json
 import csv
+import pickle
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -13,15 +14,24 @@ with open('facebook_credentials.txt') as file:
     PASSWORD = file.readline().split('"')[1]
 
 
+def _extract_post_creation_datetime(item):
+    return item.find(class_="_5ptz")["title"]
+
+
+def _extract_post_creator(item):
+    return item.find(class_="_s0 _4ooo _5xib _5sq7 _44ma _rw img")["aria-label"]
+
+
 def _extract_post_text(item):
     actualPosts = item.find_all(attrs={"data-testid": "post_message"})
     text = ""
     if actualPosts:
         for posts in actualPosts:
             paragraphs = posts.find_all('p')
-            text = ""
             for index in range(0, len(paragraphs)):
                 text += paragraphs[index].text
+            text += ' -- '
+    text = text[:-4]
     return text
 
 
@@ -49,92 +59,84 @@ def _extract_image(item):
     return image
 
 
-def _extract_shares(item):
-    postShares = item.find_all(class_="_4vn1")
-    shares = ""
-    for postShare in postShares:
+def _extract_like_count(item):
+    likes = 0
+    count = item.find(class_="_81hb")
+    if count is not None:
+        likes = int(count.text)
+    return likes
 
-        x = postShare.string
-        if x is not None:
-            x = x.split(">", 1)
-            shares = x
-        else:
-            shares = "0"
+
+def _extract_comment_count(item):
+    comments = 0
+    s = item.find(class_="_3hg- _42ft")
+    if s is not None:
+        comments = int(s.text.split(' ')[0])
+    return comments
+
+
+def _extract_share_count(item):
+    shares = 0
+    s = item.find(class_="_3rwx _42ft")
+    if s is not None:
+        shares = int(s.text.split(' ')[0])
     return shares
 
 
 def _extract_comments(item):
-    postComments = item.find_all(attrs={"aria-label": "Comment"})
-    comments = dict()
-    # print(postDict)
-    for comment in postComments:
-        if comment.find(class_="_6qw4") is None:
-            continue
+    comments = []
+    commentList = item.find('ul', {'class': '_7791'})
+    if commentList:
+        comment = commentList.find_all('li')
+        if comment:
+            for litag in comment:
+                aria = litag.find(attrs={"aria-label": "Comment"})
+                if aria:
+                    thread = dict()
+                    thread["comment"] = dict()
 
-        commenter = comment.find(class_="_6qw4").text
-        comments[commenter] = dict()
+                    commenter = aria.find(class_="_6qw4").text
+                    thread["comment"]["author"] = commenter
 
-        comment_text = comment.find("span", class_="_3l3x")
+                    comment_text = litag.find("span", class_="_3l3x")
+                    if comment_text:
+                        thread["comment"]["text"] = comment_text.text
 
-        if comment_text is not None:
-            comments[commenter]["text"] = comment_text.text
+                    comment_link = litag.find(class_="_ns_")
+                    if comment_link is not None:
+                        thread["comment"]["link"] = comment_link.get("href")
 
-        comment_link = comment.find(class_="_ns_")
-        if comment_link is not None:
-            comments[commenter]["link"] = comment_link.get("href")
+                    comment_pic = litag.find(class_="_2txe")
+                    if comment_pic is not None:
+                        thread["comment"]["image"] = comment_pic.find(class_="img").get("src")
 
-        comment_pic = comment.find(class_="_2txe")
-        if comment_pic is not None:
-            comments[commenter]["image"] = comment_pic.find(class_="img").get("src")
+                    repliesList = litag.find(class_="_2h2j")
+                    if repliesList:
+                        reply = repliesList.find_all('li')
+                        if reply:
+                            thread['replies'] = []
+                            for litag2 in reply:
+                                aria2 = litag2.find(attrs={"aria-label": "Comment reply"})
+                                if aria2:
+                                    author = aria2.find(class_="_6qw4").text
+                                    if author:
+                                        reply_dict = dict()
+                                        reply_dict["author"] = author
 
-        commentList = item.find('ul', {'class': '_7791'})
-        if commentList:
-            comments = dict()
-            comment = commentList.find_all('li')
-            if comment:
-                for litag in comment:
-                    aria = litag.find(attrs={"aria-label": "Comment"})
-                    if aria:
-                        commenter = aria.find(class_="_6qw4").text
-                        comments[commenter] = dict()
-                        comment_text = litag.find("span", class_="_3l3x")
-                        if comment_text:
-                            comments[commenter]["text"] = comment_text.text
-                            # print(str(litag)+"\n")
+                                        reply_text = litag2.find("span", class_="_3l3x")
+                                        if reply_text:
+                                            reply_dict["text"] = reply_text.text
 
-                        comment_link = litag.find(class_="_ns_")
-                        if comment_link is not None:
-                            comments[commenter]["link"] = comment_link.get("href")
+                                        r_link = litag2.find(class_="_ns_")
+                                        if r_link is not None:
+                                            reply_dict["link"] = r_link.get("href")
 
-                        comment_pic = litag.find(class_="_2txe")
-                        if comment_pic is not None:
-                            comments[commenter]["image"] = comment_pic.find(class_="img").get("src")
+                                        r_pic = litag2.find(class_="_2txe")
+                                        if r_pic is not None:
+                                            reply_dict["image"] = r_pic.find(class_="img").get("src")
 
-                        repliesList = litag.find(class_="_2h2j")
-                        if repliesList:
-                            reply = repliesList.find_all('li')
-                            if reply:
-                                comments[commenter]['reply'] = dict()
-                                for litag2 in reply:
-                                    aria2 = litag2.find(attrs={"aria-label": "Comment reply"})
-                                    if aria2:
-                                        replier = aria2.find(class_="_6qw4").text
-                                        if replier:
-                                            comments[commenter]['reply'][replier] = dict()
-
-                                            reply_text = litag2.find("span", class_="_3l3x")
-                                            if reply_text:
-                                                comments[commenter]['reply'][replier][
-                                                    "reply_text"] = reply_text.text
-
-                                            r_link = litag2.find(class_="_ns_")
-                                            if r_link is not None:
-                                                comments[commenter]['reply']["link"] = r_link.get("href")
-
-                                            r_pic = litag2.find(class_="_2txe")
-                                            if r_pic is not None:
-                                                comments[commenter]['reply']["image"] = r_pic.find(
-                                                    class_="img").get("src")
+                                        thread['replies'].append(reply_dict)
+                    comments.append(thread)
     return comments
 
 
@@ -164,33 +166,6 @@ def _extract_reaction(item):
 
             reaction[reaction] = realNum
     return reaction
-
-
-def _extract_html(bs_data):
-
-    #Add to check
-    with open('./bs.html',"w", encoding="utf-8") as file:
-        file.write(str(bs_data.prettify()))
-
-    k = bs_data.find_all(class_="_5pcr userContentWrapper")
-    postBigDict = list()
-
-    for item in k:
-        postDict = dict()
-        postDict['Post'] = _extract_post_text(item)
-        postDict['Link'] = _extract_link(item)
-        postDict['PostId'] = _extract_post_id(item)
-        postDict['Image'] = _extract_image(item)
-        postDict['Shares'] = _extract_shares(item)
-        postDict['Comments'] = _extract_comments(item)
-        # postDict['Reaction'] = _extract_reaction(item)
-
-        #Add to check
-        postBigDict.append(postDict)
-        with open('./postBigDict.json','w', encoding='utf-8') as file:
-            file.write(json.dumps(postBigDict, ensure_ascii=False).encode('utf-8').decode())
-
-    return postBigDict
 
 
 def _login(browser, email, password):
@@ -241,6 +216,55 @@ def _scroll(browser, infinite_scroll, lenOfPage):
             match = True
 
 
+def parse_html(source_data, source_file=None):
+
+    if source_file:
+
+        # Load the source data from disk
+        print(f"Loading the page source from {source_file}.")
+        f = open(source_file,'rb')
+        source_data = pickle.load(f)
+
+    # Throw your source into BeautifulSoup and start parsing!
+    bs_data = bs(source_data, 'html.parser')
+
+    # Add to check
+    with open('./bs.html',"w", encoding="utf-8") as file:
+        file.write(str(bs_data.prettify()))
+
+    k = bs_data.find_all(class_="_5pcr userContentWrapper")
+    postBigDict = list()
+
+    posts_processed = 0
+    for item in k:
+        postDict = dict()
+        postDict['Datetime'] = _extract_post_creation_datetime(item)
+        postDict['Creator'] = _extract_post_creator(item)
+        postDict['Post'] = _extract_post_text(item)
+        postDict['Link'] = _extract_link(item)
+        postDict['PostId'] = _extract_post_id(item)
+        postDict['Image'] = _extract_image(item)
+        postDict['NumComments'] = _extract_comment_count(item)
+        postDict['NumShares'] = _extract_share_count(item)
+        postDict['NumLikes'] = _extract_like_count(item)
+        postDict['Comments'] = _extract_comments(item)
+        # postDict['Reaction'] = _extract_reaction(item)
+
+        # Add to check
+        postBigDict.append(postDict)
+        with open('./postBigDict.json','w', encoding='utf-8') as file:
+            file.write(json.dumps(postBigDict, ensure_ascii=False).encode('utf-8').decode())
+
+        posts_processed += 1
+        if posts_processed % 10 == 0:
+            print(f"{posts_processed} posts processed.")
+
+    if posts_processed % 10 != 0:
+        print(f"{posts_processed} posts processed.")
+
+    return postBigDict
+
+
 def extract(page, numOfPost, infinite_scroll=False, scrape_comment=False):
     option = Options()
     option.add_argument("--disable-infobars")
@@ -253,6 +277,7 @@ def extract(page, numOfPost, infinite_scroll=False, scrape_comment=False):
     })
 
     # chromedriver should be in the same folder as file
+    print("Scrolling through the webpage to load the posts.")
     browser = webdriver.Chrome(executable_path="./chromedriver", options=option)
     _login(browser, EMAIL, PASSWORD)
     browser.get(page)
@@ -264,9 +289,8 @@ def extract(page, numOfPost, infinite_scroll=False, scrape_comment=False):
     # TODO: ie. comment of a comment
 
     if scrape_comment:
-
+        print("Scrolling through the webpage and clicking to expose the comments.")
         moreComments = browser.find_elements_by_xpath('//a[@class="_4sxc _42ft"]')
-        print("Scrolling through to click on more comments")
         while len(moreComments) != 0:
             for moreComment in moreComments:
                 action = webdriver.common.action_chains.ActionChains(browser)
@@ -278,16 +302,18 @@ def extract(page, numOfPost, infinite_scroll=False, scrape_comment=False):
                 except:
                     # do nothing right here
                     pass
-
             moreComments = browser.find_elements_by_xpath('//a[@class="_4sxc _42ft"]')
 
     # Now that the page is fully scrolled, grab the source code.
     source_data = browser.page_source
 
-    # Throw your source into BeautifulSoup and start parsing!
-    bs_data = bs(source_data, 'html.parser')
+    # Save the source data to disk prior to parsing in case there's an error downstream
+    print("Saving the page source to source_data.bin.")
+    f = open('source_data.bin','wb')
+    pickle.dump(source_data,f)
+    f.close()
 
-    postBigDict = _extract_html(bs_data)
+    postBigDict = parse_html(source_data)
     browser.close()
 
     return postBigDict
