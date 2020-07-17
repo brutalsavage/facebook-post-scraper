@@ -64,7 +64,7 @@ def _extract_shares(item):
 
 
 def _extract_comments(item):
-    postComments = item.find_all(attrs={"aria-label": "Comment"})
+    postComments = item.findAll("div", {"class": "_4eek"})
     comments = dict()
     # print(postDict)
     for comment in postComments:
@@ -93,7 +93,7 @@ def _extract_comments(item):
             comment = commentList.find_all('li')
             if comment:
                 for litag in comment:
-                    aria = litag.find(attrs={"aria-label": "Comment"})
+                    aria = litag.find("div", {"class": "_4eek"})
                     if aria:
                         commenter = aria.find(class_="_6qw4").text
                         comments[commenter] = dict()
@@ -116,7 +116,7 @@ def _extract_comments(item):
                             if reply:
                                 comments[commenter]['reply'] = dict()
                                 for litag2 in reply:
-                                    aria2 = litag2.find(attrs={"aria-label": "Comment reply"})
+                                    aria2 = litag2.find("div", {"class": "_4efk"})
                                     if aria2:
                                         replier = aria2.find(class_="_6qw4").text
                                         if replier:
