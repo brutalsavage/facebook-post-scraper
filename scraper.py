@@ -264,7 +264,41 @@ def extract(page, numOfPost, infinite_scroll=False, scrape_comment=False):
     # TODO: ie. comment of a comment
 
     if scrape_comment:
+        #first uncollapse collapsed comments
+        unCollapseCommentsButtonsXPath = '//a[contains(@class,"_666h")]'
+        unCollapseCommentsButtons = browser.find_elements_by_xpath(unCollapseCommentsButtonsXPath)
+        for unCollapseComment in unCollapseCommentsButtons:
+            action = webdriver.common.action_chains.ActionChains(browser)
+            try:
+                # move to where the un collapse on is
+                action.move_to_element_with_offset(unCollapseComment, 5, 5)
+                action.perform()
+                unCollapseComment.click()
+            except:
+                # do nothing right here
+                pass
 
+        #second set comment ranking to show all comments
+        rankDropdowns = browser.find_elements_by_class_name('_2pln') #select boxes who have rank dropdowns
+        rankXPath = '//div[contains(concat(" ", @class, " "), "uiContextualLayerPositioner") and not(contains(concat(" ", @class, " "), "hidden_elem"))]//div/ul/li/a[@class="_54nc"]/span/span/div[@data-ordering="RANKED_UNFILTERED"]'
+        for rankDropdown in rankDropdowns:
+            #click to open the filter modal
+            action = webdriver.common.action_chains.ActionChains(browser)
+            try:
+                action.move_to_element_with_offset(rankDropdown, 5, 5)
+                action.perform()
+                rankDropdown.click()
+            except:
+                pass
+
+            # if modal is opened filter comments
+            ranked_unfiltered = browser.find_elements_by_xpath(rankXPath) # RANKED_UNFILTERED => (All Comments)
+            if len(ranked_unfiltered) > 0:
+                try:
+                    ranked_unfiltered[0].click()
+                except:
+                    pass    
+        
         moreComments = browser.find_elements_by_xpath('//a[@class="_4sxc _42ft"]')
         print("Scrolling through to click on more comments")
         while len(moreComments) != 0:
