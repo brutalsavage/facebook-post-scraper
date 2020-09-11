@@ -198,7 +198,8 @@ def _login(browser, email, password):
     browser.maximize_window()
     browser.find_element_by_name("email").send_keys(email)
     browser.find_element_by_name("pass").send_keys(password)
-    browser.find_element_by_id('loginbutton').click()
+    #browser.find_element_by_id('u_0_b').click()
+    browser.find_element_by_name("login").click()
     time.sleep(5)
 
 
@@ -374,6 +375,6 @@ if __name__ == "__main__":
 
     else:
         for post in postBigDict:
-            print(post)
+            print("\n")
 
     print("Finished")
