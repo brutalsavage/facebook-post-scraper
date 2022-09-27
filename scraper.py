@@ -5,6 +5,7 @@ import csv
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup as bs
 
 
@@ -196,9 +197,9 @@ def _extract_html(bs_data):
 def _login(browser, email, password):
     browser.get("http://facebook.com")
     browser.maximize_window()
-    browser.find_element_by_name("email").send_keys(email)
-    browser.find_element_by_name("pass").send_keys(password)
-    browser.find_element_by_id('loginbutton').click()
+    browser.find_element(By.XPATH,"/html/body/div[1]/div[1]/div[1]/div/div/div/div[2]/div/div[1]/form/div[1]/div[1]/input").send_keys(email)
+    browser.find_element(By.XPATH,"/html/body/div[1]/div[1]/div[1]/div/div/div/div[2]/div/div[1]/form/div[1]/div[2]/div/input").send_keys(password)
+    browser.find_element(By.XPATH, "/html/body/div[1]/div[1]/div[1]/div/div/div/div[2]/div/div[1]/form/div[2]/button").click()
     time.sleep(5)
 
 
@@ -266,7 +267,7 @@ def extract(page, numOfPost, infinite_scroll=False, scrape_comment=False):
     if scrape_comment:
         #first uncollapse collapsed comments
         unCollapseCommentsButtonsXPath = '//a[contains(@class,"_666h")]'
-        unCollapseCommentsButtons = browser.find_elements_by_xpath(unCollapseCommentsButtonsXPath)
+        unCollapseCommentsButtons = browser.find_elements(By.XPATH, unCollapseCommentsButtonsXPath)
         for unCollapseComment in unCollapseCommentsButtons:
             action = webdriver.common.action_chains.ActionChains(browser)
             try:
@@ -279,7 +280,7 @@ def extract(page, numOfPost, infinite_scroll=False, scrape_comment=False):
                 pass
 
         #second set comment ranking to show all comments
-        rankDropdowns = browser.find_elements_by_class_name('_2pln') #select boxes who have rank dropdowns
+        rankDropdowns = browser.find_elements(By.CLASS_NAME, '_2pln') #select boxes who have rank dropdowns
         rankXPath = '//div[contains(concat(" ", @class, " "), "uiContextualLayerPositioner") and not(contains(concat(" ", @class, " "), "hidden_elem"))]//div/ul/li/a[@class="_54nc"]/span/span/div[@data-ordering="RANKED_UNFILTERED"]'
         for rankDropdown in rankDropdowns:
             #click to open the filter modal
@@ -292,14 +293,14 @@ def extract(page, numOfPost, infinite_scroll=False, scrape_comment=False):
                 pass
 
             # if modal is opened filter comments
-            ranked_unfiltered = browser.find_elements_by_xpath(rankXPath) # RANKED_UNFILTERED => (All Comments)
+            ranked_unfiltered = browser.find_elements(By.XPATH, rankXPath) # RANKED_UNFILTERED => (All Comments)
             if len(ranked_unfiltered) > 0:
                 try:
                     ranked_unfiltered[0].click()
                 except:
                     pass    
         
-        moreComments = browser.find_elements_by_xpath('//a[@class="_4sxc _42ft"]')
+        moreComments = browser.find_elements(By.XPATH, '//a[@class="_4sxc _42ft"]')
         print("Scrolling through to click on more comments")
         while len(moreComments) != 0:
             for moreComment in moreComments:
@@ -313,7 +314,7 @@ def extract(page, numOfPost, infinite_scroll=False, scrape_comment=False):
                     # do nothing right here
                     pass
 
-            moreComments = browser.find_elements_by_xpath('//a[@class="_4sxc _42ft"]')
+            moreComments = browser.find_elements(By.XPATH, '//a[@class="_4sxc _42ft"]')
 
     # Now that the page is fully scrolled, grab the source code.
     source_data = browser.page_source
